@@ -49,6 +49,13 @@
         return (i < 10 ? '0' : '') + i;
     };
     
+    // `$$` return an array of elements for given CSS `selector` in the `context` of
+    // the given element or whole document.
+    var $$ = function ( selector, context ) {
+             context = context || document;
+             return [].slice.call(( context.querySelectorAll(selector)));
+    };
+
     // The console object
     var impressConsole = window.impressConsole = function (rootId) {
 
@@ -63,8 +70,22 @@
 
         var consoleWindow = null;
 
+	    var getCurrStep_StepID = function(element) {
+		var presentsubStep =  element.querySelector(".substep.present");
+		if (presentsubStep != null) 
+                     return element.id+"._"+(1+$$(".substep", element).indexOf(presentsubStep));
+				return element.id+"._0";
+			} 
+
+	    var getNextStep_StepID = function(element) {
+		var futuresubStep =  element.querySelector(".substep.future");
+		if (futuresubStep != null) 
+                     return element.id+"._"+(1+$$(".substep", element).indexOf(futuresubStep));
+			return nextStep().id+"._0";
+	    }
+		
         var nextStep = function() {
-            var nextElement = document.querySelector('.active').nextElementSibling;
+            var nextElement = document.querySelector('.step.active').nextElementSibling;
             var classes = "";
             while (nextElement) {
                 classes = nextElement.attributes['class'];
@@ -81,7 +102,8 @@
         var onStepLeave = function(){
             if(consoleWindow) {
                 // Set notes to next steps notes.
-                var newNotes = document.querySelector('.active').querySelector('.notes');
+                var activeStep = document.querySelector('.step.active');
+                var newNotes = activeStep.querySelector('.notes');
                 if (newNotes) {
                     newNotes = newNotes.innerHTML;
                 } else {
@@ -91,8 +113,8 @@
 
                 // Set the views                
                 var baseURL = document.URL.substring(0, document.URL.search('#/'));
-                var slideSrc = baseURL + '#' + document.querySelector('.active').id;
-                var preSrc = baseURL + '#' + nextStep().id;
+                var slideSrc = baseURL + '#' + getCurrStep_StepID(activeStep);
+                var preSrc = baseURL + '#' + getNextStep_StepID(activeStep);
                 var slideView = consoleWindow.document.getElementById('slideView');
                 // Setting them when they are already set causes glithes in Firefox, so we check first:
                 if (slideView.src !== slideSrc) {
@@ -113,7 +135,8 @@
                 // We do everything here again, because if you stopped the previos step to
                 // early, the onstepleave trigger is not called for that step, so
                 // we need this to sync things.
-                var newNotes = document.querySelector('.active').querySelector('.notes');
+                var activeStep = document.querySelector('.step.active');
+                var newNotes = activeStep.querySelector('.notes');
                 if (newNotes) {
                     newNotes = newNotes.innerHTML;
                 } else {
@@ -125,8 +148,8 @@
                 
                 // Set the views
                 var baseURL = document.URL.substring(0, document.URL.search('#/'));
-                var slideSrc = baseURL + '#' + document.querySelector('.active').id;
-                var preSrc = baseURL + '#' + nextStep().id;
+                var slideSrc = baseURL + '#' + getCurrStep_StepID(activeStep);
+                var preSrc = baseURL + '#' + getNextStep_StepID(activeStep);
                 var slideView = consoleWindow.document.getElementById('slideView');
                 // Setting them when they are already set causes glithes in Firefox, so we check first:
                 if (slideView.src !== slideSrc) {
@@ -279,6 +302,8 @@
             // Register the event
             root.addEventListener('impress:stepleave', onStepLeave);
             root.addEventListener('impress:stepenter', onStepEnter);
+			root.addEventListener('impress:substep-enter', onStepEnter);
+			root.addEventListener('impress:substep-exit', onStepLeave);
             
             //When the window closes, clean up after ourselves.
             window.onunload = function(){
